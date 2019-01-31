@@ -210,6 +210,7 @@ public class Main {
 
 		printDictionnary(createDictionnary(file,ht_titles));
 
+
 		// if(ht.get(normalize("Titre one")) != null){
 		// 	System.out.println(ht.get(normalize("Titre one")));
 		// }
