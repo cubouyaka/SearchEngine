@@ -1,0 +1,16 @@
+<page>
+<title>Titre one</title>
+Un bien fef ef ef 
+</pages>
+<page>
+<title>Titre two</title>
+deux bien
+</page>
+<page>
+testt troîs bien
+<title>Titre 3</title>
+</page>
+<page>
+<title>Le Non Voulu</title>
+déux frf edg bien
+</page>
