@@ -89,7 +89,7 @@ public class Main {
 	}
 
 	public static Hashtable<String, Integer> createHashtableTitles(String file, String[] wanted){
-		int i = 0;
+		int current_id_title = 0;
 		Hashtable<String, Integer> ht = new Hashtable<String, Integer>();
 		try{
 			InputStream is = new FileInputStream(file);
@@ -101,17 +101,17 @@ public class Main {
 				Pattern p = Pattern.compile("<title>(.+?)</title>");
 				Matcher m = p.matcher(line);
 
-				//TODO les mots ne se trouvent qu'apres la balise <text ...> !
-
 				if(m.find()){
-					String title = normalize(m.group(1));
+					// String title = normalize(m.group(1)); //we dont keep accents
+					String title = m.group(1); //we keep accents
 					line = br.readLine();
 
 					if(ht.containsKey(title)){
-						System.out.println("titre en double: "+title+" current id: "+i+" previous id: "+ht.get(title));
+						System.out.println("Warning : Titre en double: "+title+" current id: "+
+							current_id_title+" previous id: "+ht.get(title));
 					}
-					ht.put(title,i);
-					i++;
+					ht.put(title,current_id_title);
+					current_id_title++;
 				}
 				line = br.readLine();
 			}
@@ -196,7 +196,8 @@ public class Main {
 				Pattern p = Pattern.compile("<title>(.+?)</title>");
 				Matcher m = p.matcher(line);
 				if(m.find()){
-					String title = normalize(m.group(1));
+					// String title = normalize(m.group(1)); //we dont keep accents
+					String title = m.group(1); //we keep accents
 						if(ht_titles.containsKey(title)){ //if the page is store in ht_titles
 							current_id = ht_titles.get(title);
 							eligible = true;
@@ -217,10 +218,10 @@ public class Main {
 	public static void main(String[] args) {
 
 		// String file = "test.txt";
-		String file = "debut.xml";
-		// String file = "frwiki-debut.xml";
-		String [] wanted = {"etudiant"};
-		// String [] wanted = {"mathematiques","informatique","sciences"};
+		// String file = "debut.xml";
+		String file = "frwiki-debut.xml";
+		// String [] wanted = {"etudiant"};
+		String [] wanted = {"mathematiques","informatique","sciences"};
 		//System.out.println(nbPagesThatContains("test.txt",wanted));
 
 		Hashtable<String, Integer> ht_titles = createHashtableTitles(file,wanted);
@@ -230,6 +231,8 @@ public class Main {
 		// System.out.println(nbPagesThatContains("frwiki-debut.xml",wanted));
 
 		// System.out.println(ht_titles.toString());
+		System.out.println(ht_titles.size());
+		System.out.println(dictionnary.size());
 
 		if(dictionnary.containsKey("namespace")){
 			System.out.println("namespace");
@@ -237,9 +240,9 @@ public class Main {
 		if(dictionnary.containsKey("<namespace")){
 			System.out.println("<namespace");
 		}
-		if(dictionnary.containsKey("comparative")){
-			System.out.println("comparative");
-		}
+		// if(dictionnary.containsKey("comparative")){
+		// 	System.out.println("comparative");
+		// }
 		if(dictionnary.containsKey("152515873")){
 			System.out.println("152515873");
 		}
@@ -275,24 +278,3 @@ public class Main {
 		// }
 	}
 } 
-
-
-
-
-
-
-
-					// while(!line.contains("<text xml")){
-					// 	line = br.readLine();
-					// }
-					// line = br.readLine();
-					// int nb_open = 1;
-					// while(nb_open != 0){
-					// 	line = br.readLine();
-					// 	if(line.contains("{{")){
-					// 		nb_open++;
-					// 	}
-					// 	if(line.contains("}}")){
-					// 		nb_open--;
-					// 	}
-					// }
