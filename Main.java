@@ -48,12 +48,12 @@ public class Main {
 			BufferedReader br = new BufferedReader(new InputStreamReader(is));
 
 			String line = br.readLine();
-			boolean page = false;
-			boolean balise = true;
+			boolean text = false; //if we are inside a text balise
+			boolean balise = true; //if we are reading a balise
 
 			while(line != null){ //while not end of file
 				for(String w : wanted){
-					if(page){
+					if(text){
 						for(String s : line.split(" ")){
 							s = normalize(s);
 							if(s.contains("&lt")){
@@ -64,17 +64,17 @@ public class Main {
 							if(balise){
 								if(s.contains(w.toLowerCase())){
 									nb ++;
-									page = false;
+									text = false;
 									break;
 								}
 							}
 						}				
 					}
 				}
-				if(line.contains("<page>")){
-					page = true;
-				}else if (line.contains("</page>")){
-					page = false;
+				if(line.contains("<text ")){
+					text = true;
+				}else if (line.contains("</text>")){
+					text = false;
 				}
 
 				line = br.readLine();
@@ -106,7 +106,6 @@ public class Main {
 				if(m.find()){
 					String title = normalize(m.group(1));
 					line = br.readLine();
-					while(line.contains("<"))
 
 					if(ht.containsKey(title)){
 						System.out.println("titre en double: "+title+" current id: "+i+" previous id: "+ht.get(title));
@@ -145,40 +144,59 @@ public class Main {
 
 			String line = normalize(br.readLine());
 			boolean eligible = false; //if the page is in ht_titles
+			boolean eligible_text = false; //if we are inside of a text balise
 			String[] words;
 			int current_id = 0; //current page id 
 			int nb_words = 0; //number of words in the current page
+			int nb_open = 0; //number of {{ open and not closed
 
 			while(line != null){ //while not end of file
 				if(line.contains("<title>")){
 					eligible = false;
 				}
 				if(eligible){
-					line = normalize(line);
-					line = cleanStopWords(line);
-					words = line.split(" ");
-					for(String w : words){
-						nb_words++;
 
-						// TODO frequencies of each words in the current page
+					if(line.contains("<text ")){
+						eligible_text = true;
+					}
+					if(eligible_text){
+						if(line.contains("{{")){
+							nb_open++;
+						}
+						if(line.contains("}}")){
+							nb_open--;
+						}
+						if(nb_open == 0){
+							line = normalize(line);
+							line = cleanStopWords(line);
+							words = line.split(" ");
+							for(String w : words){
+								nb_words++;
 
-						if(!dictionnary.containsKey(w)){ //if it's a new word
-							Hashtable<Integer,Double> h = new Hashtable<Integer,Double>();
-							h.put(current_id,1.0);
-							dictionnary.put(w,h);
-						}else{ //if the word already exist in the dictionnary
-							if(dictionnary.get(w).containsKey(current_id)){ //if we've already seen this word in this page
-								dictionnary.get(w).put(current_id,dictionnary.get(w).get(current_id)+1.0);
-							}else{
-								dictionnary.get(w).put(current_id,1.0);
+							// TODO frequencies of each words in the current page
+
+								if(!dictionnary.containsKey(w)){ //if it's a new word
+								Hashtable<Integer,Double> h = new Hashtable<Integer,Double>();
+								h.put(current_id,1.0);
+								dictionnary.put(w,h);
+								}else{ //if the word already exist in the dictionnary
+									if(dictionnary.get(w).containsKey(current_id)){ //if we've already seen this word in this page
+									dictionnary.get(w).put(current_id,dictionnary.get(w).get(current_id)+1.0);
+								}else{
+									dictionnary.get(w).put(current_id,1.0);
+								}
 							}
 						}
 					}
-				}else{
-					Pattern p = Pattern.compile("<title>(.+?)</title>");
-					Matcher m = p.matcher(line);
-					if(m.find()){
-						String title = normalize(m.group(1));
+					if(line.contains("</text>")){
+						eligible_text = false;
+					}
+				}
+			}else{
+				Pattern p = Pattern.compile("<title>(.+?)</title>");
+				Matcher m = p.matcher(line);
+				if(m.find()){
+					String title = normalize(m.group(1));
 						if(ht_titles.containsKey(title)){ //if the page is store in ht_titles
 							current_id = ht_titles.get(title);
 							eligible = true;
@@ -198,17 +216,35 @@ public class Main {
 
 	public static void main(String[] args) {
 
-		String file = "test.txt";
+		// String file = "test.txt";
+		String file = "debut.xml";
 		// String file = "frwiki-debut.xml";
-		String [] wanted = {"bien"};
+		String [] wanted = {"etudiant"};
 		// String [] wanted = {"mathematiques","informatique","sciences"};
 		//System.out.println(nbPagesThatContains("test.txt",wanted));
-		//System.out.println(nbPagesThatContains("frwiki-debut.xml",wanted));
-		Hashtable<String, Integer> ht_titles = createHashtableTitles(file);
+
+		Hashtable<String, Integer> ht_titles = createHashtableTitles(file,wanted);
+
+		Hashtable<String,Hashtable<Integer,Double>> dictionnary = createDictionnary(file,ht_titles);
+
+		// System.out.println(nbPagesThatContains("frwiki-debut.xml",wanted));
 
 		// System.out.println(ht_titles.toString());
 
-		printDictionnary(createDictionnary(file,ht_titles));
+		if(dictionnary.containsKey("namespace")){
+			System.out.println("namespace");
+		}
+		if(dictionnary.containsKey("<namespace")){
+			System.out.println("<namespace");
+		}
+		if(dictionnary.containsKey("comparative")){
+			System.out.println("comparative");
+		}
+		if(dictionnary.containsKey("152515873")){
+			System.out.println("152515873");
+		}
+		
+		// printDictionnary(dictionnary);
 
 
 		// if(ht.get(normalize("Titre one")) != null){
@@ -239,3 +275,24 @@ public class Main {
 		// }
 	}
 } 
+
+
+
+
+
+
+
+					// while(!line.contains("<text xml")){
+					// 	line = br.readLine();
+					// }
+					// line = br.readLine();
+					// int nb_open = 1;
+					// while(nb_open != 0){
+					// 	line = br.readLine();
+					// 	if(line.contains("{{")){
+					// 		nb_open++;
+					// 	}
+					// 	if(line.contains("}}")){
+					// 		nb_open--;
+					// 	}
+					// }
