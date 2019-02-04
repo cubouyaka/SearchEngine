@@ -3,62 +3,77 @@ import java.util.regex.*;
 import java.io.*;
 import java.text.Normalizer;
 
+
 public class Main {
 
-	public static void tokenisation(String t){
+	// public static void tokenisation(String t){
 
-		Pattern p = Pattern.compile("<page>(.+?)</page>");
-		Matcher m = p.matcher(t);
-		// System.out.println(m);
-		int nb_pages = 0;
-		int nb_pages_ok = 0;
-		String [] wanted = {"un","deux","trois"};
+	// 	Pattern p = Pattern.compile("<page>(.+?)</page>");
+	// 	Matcher m = p.matcher(t);
+	// 	// System.out.println(m);
+	// 	int nb_pages = 0;
+	// 	int nb_pages_ok = 0;
+	// 	String [] wanted = {"un","deux","trois"};
 
-		while(m.find()){
-			String [] arr = m.group(1).split(" ");
-			for(String w : wanted){
-				if(Arrays.asList(arr).contains(w)){
-					nb_pages_ok ++;
-					break;
-				}
-			}
+	// 	while(m.find()){
+	// 		String [] arr = m.group(1).split(" ");
+	// 		for(String w : wanted){
+	// 			if(Arrays.asList(arr).contains(w)){
+	// 				nb_pages_ok ++;
+	// 				break;
+	// 			}
+	// 		}
 
-			for(String s : arr){
-				if(!s.equals("")){
-					System.out.println(s);
-				}
-			}
-			nb_pages++;
-		} 
-		System.out.println(nb_pages_ok);
-	}
+	// 		for(String s : arr){
+	// 			if(!s.equals("")){
+	// 				System.out.println(s);
+	// 			}
+	// 		}
+	// 		nb_pages++;
+	// 	} 
+	// 	System.out.println(nb_pages_ok);
+	// }
 
 	public static String normalize(String s){
 		s = Normalizer.normalize(s,Normalizer.Form.NFD).replaceAll("[\u0300-\u036F]","").toLowerCase();
 		s = s.replaceAll("<"," <");
 		s = s.replaceAll(">","> ");
+		s = s.replaceAll("\\[\\["," [[");
+		s = s.replaceAll("\\]\\]","]] ");
 		s = s.replaceAll("\\{\\{"," {{ ");
 		s = s.replaceAll("\\}\\}"," }} ");
 
 		Pattern p = Pattern.compile("\\{\\{(.+?)\\}\\}");
 		Matcher m = p.matcher(s);
-		if(m.find()){
+		while(m.find()){
 			s = s.replaceAll(Pattern.quote(m.group()),"");
 		}
 
 		p = Pattern.compile("&lt;ref&gt;(.+?)&lt;/ref&gt;");
 		m = p.matcher(s);
-		if(m.find()){
+		while(m.find()){
 			s = s.replaceAll(Pattern.quote(m.group()),"");
 		}
 
 		p = Pattern.compile("&lt;(.+?)/&gt;");
 		m = p.matcher(s);
-		if(m.find()){
+		while(m.find()){
 			s = s.replaceAll(Pattern.quote(m.group()),"");
 		}
 
-		String[] ponctuation = {"'","\\.",";","\\!","\\?",",","\\-","\\(","\\)"};
+		p = Pattern.compile("&lt;math&gt;(.+?)&lt;/math&gt;");
+		m = p.matcher(s);
+		while(m.find()){
+			s = s.replaceAll(Pattern.quote(m.group()),"");
+		}
+
+		p = Pattern.compile("\\=\\=(.+?)\\=\\=");
+		m = p.matcher(s);
+		while(m.find()){
+			s = s.replaceAll(Pattern.quote(m.group()),"");
+		}
+
+		String[] ponctuation = {"'","\\.",";","\\!","\\?",",","\\-","\\(","\\)","\\*","\\=","%"};
 		for(String sp : ponctuation){
 			s = s.replaceAll(sp," ");
 		}
@@ -151,9 +166,10 @@ public class Main {
 	}
 
 	public static String cleanStopWords(String s){
-		String[] stop_words = {"un","deux"};
+		String[] stop_words = {" a "," b "," c "," d "," e "," f "," g "," h "," i "," j "," k "," l ",
+		" m "," n "," o "," p "," q "," r "," s "," t "," u "," v "," w "," x "," y "," z ","trois","deux"};
 		for(String sw : stop_words){
-			s = s.replaceAll(sw,"");
+			s = s.replaceAll(sw," ");
 		}
 		return s;
 	}
@@ -185,53 +201,60 @@ public class Main {
 					if(line.contains("<text ")){
 						eligible_text = true;
 					}
+
+					if(line.contains("</text>")){
+						for (Map.Entry<String,Hashtable<Integer,Double>> entry : dictionnary.entrySet()) {
+							for(Map.Entry<Integer,Double> e : entry.getValue().entrySet()){
+								if(e.getKey() == current_id){
+									System.out.println(e.getValue()/nb_words);
+									e.setValue(e.getValue()/nb_words);
+								}
+							}
+						}
+
+						eligible_text = false;
+						nb_words = 0;
+					}
+
 					if(eligible_text){
-						if(line.contains("{{")){
-							nb_open++;
-						}
-						if(line.contains("}}")){
-							nb_open--;
-						}
+						nb_open += (line.length() - line.replace("{{", "").length())/2;
+						nb_open -= (line.length() - line.replace("}}", "").length())/2;
 						if(nb_open == 0){
 							line = normalize(line);
 							line = cleanStopWords(line);
 							words = line.split(" ");
 							for(String w : words){
-								nb_words++;
-
-							// TODO frequencies of each words in the current page
-
-								if(!dictionnary.containsKey(w)){ //if it's a new word
-								Hashtable<Integer,Double> h = new Hashtable<Integer,Double>();
-								h.put(current_id,1.0);
-								dictionnary.put(w,h);
-								}else{ //if the word already exist in the dictionnary
-									if(dictionnary.get(w).containsKey(current_id)){ //if we've already seen this word in this page
-									dictionnary.get(w).put(current_id,dictionnary.get(w).get(current_id)+1.0);
-								}else{
-									dictionnary.get(w).put(current_id,1.0);
+								if(!w.equals("")){
+									nb_words++;
+									if(!dictionnary.containsKey(w)){ //if it's a new word
+											Hashtable<Integer,Double> h = new Hashtable<Integer,Double>();
+											h.put(current_id,1.0);
+											dictionnary.put(w,h);
+									}else{ //if the word already exist in the dictionnary
+										if(dictionnary.get(w).containsKey(current_id)){ //if we've already seen this word in this page
+											dictionnary.get(w).put(current_id,dictionnary.get(w).get(current_id)+1.0);
+										}else{
+											dictionnary.get(w).put(current_id,1.0);
+										}
+									}
 								}
 							}
 						}
 					}
-					if(line.contains("</text>")){
-						eligible_text = false;
-					}
-				}
-			}else{
-				Pattern p = Pattern.compile("<title>(.+?)</title>");
-				Matcher m = p.matcher(line);
-				if(m.find()){
-					// String title = normalize(m.group(1)); //we dont keep accents
-					String title = m.group(1); //we keep accents
-						if(ht_titles.containsKey(title)){ //if the page is store in ht_titles
-							current_id = ht_titles.get(title);
-							eligible = true;
+				}else{
+					Pattern p = Pattern.compile("<title>(.+?)</title>");
+					Matcher m = p.matcher(line);
+					if(m.find()){
+						// String title = normalize(m.group(1)); //we dont keep accents
+						String title = m.group(1); //we keep accents
+							if(ht_titles.containsKey(title)){ //if the page is store in ht_titles
+								current_id = ht_titles.get(title);
+								eligible = true;
+							}
 						}
 					}
+					line = br.readLine();
 				}
-				line = br.readLine();
-			}
 		}catch(FileNotFoundException e){
 			System.err.println("Caught FileNotFoundException: " + e.getMessage());
 		} catch(IOException e) {                                                                                                                                                                                                                                                          
@@ -244,7 +267,7 @@ public class Main {
 	public static void main(String[] args) {
 
 		// String file = "test.txt";
-		String file = "debut.xml";
+		String file = "short.xml";
 		// String file = "frwiki-debut.xml";
 		String [] wanted = {"etudiant"};
 		// String [] wanted = {"mathematiques","informatique","sciences"};
