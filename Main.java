@@ -37,6 +37,32 @@ public class Main {
 		s = Normalizer.normalize(s,Normalizer.Form.NFD).replaceAll("[\u0300-\u036F]","").toLowerCase();
 		s = s.replaceAll("<"," <");
 		s = s.replaceAll(">","> ");
+		s = s.replaceAll("\\{\\{"," {{ ");
+		s = s.replaceAll("\\}\\}"," }} ");
+
+		Pattern p = Pattern.compile("\\{\\{(.+?)\\}\\}");
+		Matcher m = p.matcher(s);
+		if(m.find()){
+			s = s.replaceAll(Pattern.quote(m.group()),"");
+		}
+
+		p = Pattern.compile("&lt;ref&gt;(.+?)&lt;/ref&gt;");
+		m = p.matcher(s);
+		if(m.find()){
+			s = s.replaceAll(Pattern.quote(m.group()),"");
+		}
+
+		p = Pattern.compile("&lt;(.+?)/&gt;");
+		m = p.matcher(s);
+		if(m.find()){
+			s = s.replaceAll(Pattern.quote(m.group()),"");
+		}
+
+		String[] ponctuation = {"'","\\.",";","\\!","\\?",",","\\-","\\(","\\)"};
+		for(String sp : ponctuation){
+			s = s.replaceAll(sp," ");
+		}
+
 		return s;
 	}
 
@@ -218,36 +244,37 @@ public class Main {
 	public static void main(String[] args) {
 
 		// String file = "test.txt";
-		// String file = "debut.xml";
-		String file = "frwiki-debut.xml";
-		// String [] wanted = {"etudiant"};
-		String [] wanted = {"mathematiques","informatique","sciences"};
+		String file = "debut.xml";
+		// String file = "frwiki-debut.xml";
+		String [] wanted = {"etudiant"};
+		// String [] wanted = {"mathematiques","informatique","sciences"};
 		//System.out.println(nbPagesThatContains("test.txt",wanted));
 
 		Hashtable<String, Integer> ht_titles = createHashtableTitles(file,wanted);
 
 		Hashtable<String,Hashtable<Integer,Double>> dictionnary = createDictionnary(file,ht_titles);
 
+		printDictionnary(dictionnary);
+
 		// System.out.println(nbPagesThatContains("frwiki-debut.xml",wanted));
 
 		// System.out.println(ht_titles.toString());
-		System.out.println(ht_titles.size());
-		System.out.println(dictionnary.size());
+		// System.out.println(ht_titles.size());
+		// System.out.println(dictionnary.size());
 
-		if(dictionnary.containsKey("namespace")){
-			System.out.println("namespace");
-		}
-		if(dictionnary.containsKey("<namespace")){
-			System.out.println("<namespace");
-		}
+		// if(dictionnary.containsKey("namespace")){
+		// 	System.out.println("namespace");
+		// }
+		// if(dictionnary.containsKey("<namespace")){
+		// 	System.out.println("<namespace");
+		// }
 		// if(dictionnary.containsKey("comparative")){
 		// 	System.out.println("comparative");
 		// }
-		if(dictionnary.containsKey("152515873")){
-			System.out.println("152515873");
-		}
+		// if(dictionnary.containsKey("152515873")){
+		// 	System.out.println("152515873");
+		// }
 		
-		// printDictionnary(dictionnary);
 
 
 		// if(ht.get(normalize("Titre one")) != null){
