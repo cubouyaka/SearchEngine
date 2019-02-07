@@ -34,10 +34,16 @@ public class Main {
 	// 	System.out.println(nb_pages_ok);
 	// }
 
+	public static ArrayList<Double> C; //contenus
+	public static ArrayList<Integer> L; //lignes
+	public static ArrayList<Integer> I; //indices
+
 	public static String normalize(String s){
 		s = Normalizer.normalize(s,Normalizer.Form.NFD).replaceAll("[\u0300-\u036F]","").toLowerCase();
 		s = s.replaceAll("<"," <");
 		s = s.replaceAll(">","> ");
+		s = s.replaceAll("	"," ");
+		s = s.replaceAll("&quot"," ");
 		s = s.replaceAll("\\[\\["," [[");
 		s = s.replaceAll("\\]\\]","]] ");
 		s = s.replaceAll("\\{\\{"," {{ ");
@@ -73,7 +79,7 @@ public class Main {
 			s = s.replaceAll(Pattern.quote(m.group()),"");
 		}
 
-		String[] ponctuation = {"'","\\.",";","\\!","\\?",",","\\-","\\(","\\)","\\*","\\=","%"};
+		String[] ponctuation = {"\\’","\\'","\\.",";","\\!","\\?",",","\\-","\\(","\\)","\\*","\\=","%"};
 		for(String sp : ponctuation){
 			s = s.replaceAll(sp," ");
 		}
@@ -178,19 +184,33 @@ public class Main {
 		System.out.println(dictionnary.toString());
 	}
 
+	public static int idTitle(Hashtable<String, Integer> ht_titles, String title){
+		if(!ht_titles.containsKey(title)){
+			return -1; //not found
+		}
+
+		return ht_titles.get(title);
+	}
+
 	public static Hashtable<String,Hashtable<Integer,Double>> createDictionnary(String file, Hashtable<String, Integer> ht_titles){
 		Hashtable<String,Hashtable<Integer,Double>> dictionnary = new Hashtable<String,Hashtable<Integer,Double>>();
 		try{
 			InputStream is = new FileInputStream(file);
 			BufferedReader br = new BufferedReader(new InputStreamReader(is));
 
+			C = new ArrayList<Double>();
+			L = new ArrayList<Integer>();
+			I = new ArrayList<Integer>();
+
 			String line = normalize(br.readLine());
 			boolean eligible = false; //if the page is in ht_titles
 			boolean eligible_text = false; //if we are inside of a text balise
 			String[] words;
 			int current_id = 0; //current page id 
+			int current_indice = 0; //current index in array C
 			int nb_words = 0; //number of words in the current page
 			int nb_open = 0; //number of {{ open and not closed
+			int current_nb_titles = 0;
 
 			while(line != null){ //while not end of file
 				if(line.contains("<title>")){
@@ -206,10 +226,14 @@ public class Main {
 						for (Map.Entry<String,Hashtable<Integer,Double>> entry : dictionnary.entrySet()) {
 							for(Map.Entry<Integer,Double> e : entry.getValue().entrySet()){
 								if(e.getKey() == current_id){
-									System.out.println(e.getValue()/nb_words);
 									e.setValue(e.getValue()/nb_words);
 								}
 							}
+						}
+
+						for(int i = 0; i < current_nb_titles; i++){
+							C.add((Double)(1.0/current_nb_titles));
+							current_indice++;
 						}
 
 						eligible_text = false;
@@ -218,8 +242,25 @@ public class Main {
 
 					if(eligible_text){
 						nb_open += (line.length() - line.replace("{{", "").length())/2;
-						nb_open -= (line.length() - line.replace("}}", "").length())/2;
 						if(nb_open == 0){
+							Pattern p = Pattern.compile("\\[\\[(.+?)\\]\\]");
+							Matcher m = p.matcher(line);
+
+							while(m.find()){
+								String title = m.group(1);
+								p = Pattern.compile("(.+?)\\|");
+								Matcher m2 = p.matcher(title);
+								if(m2.find()){
+									title = m2.group(1);
+								}
+								int id_title = idTitle(ht_titles,title);
+								if(id_title != -1){ //title found in the ht_titles
+									I.add(id_title);
+									current_id++;
+									current_nb_titles++;
+								}
+							}
+
 							line = normalize(line);
 							line = cleanStopWords(line);
 							words = line.split(" ");
@@ -227,34 +268,37 @@ public class Main {
 								if(!w.equals("")){
 									nb_words++;
 									if(!dictionnary.containsKey(w)){ //if it's a new word
-											Hashtable<Integer,Double> h = new Hashtable<Integer,Double>();
-											h.put(current_id,1.0);
-											dictionnary.put(w,h);
+									Hashtable<Integer,Double> h = new Hashtable<Integer,Double>();
+									h.put(current_id,1.0);
+									dictionnary.put(w,h);
 									}else{ //if the word already exist in the dictionnary
 										if(dictionnary.get(w).containsKey(current_id)){ //if we've already seen this word in this page
-											dictionnary.get(w).put(current_id,dictionnary.get(w).get(current_id)+1.0);
-										}else{
-											dictionnary.get(w).put(current_id,1.0);
-										}
+										dictionnary.get(w).put(current_id,dictionnary.get(w).get(current_id)+1.0);
+									}else{
+										dictionnary.get(w).put(current_id,1.0);
 									}
 								}
 							}
 						}
 					}
-				}else{
-					Pattern p = Pattern.compile("<title>(.+?)</title>");
-					Matcher m = p.matcher(line);
-					if(m.find()){
-						// String title = normalize(m.group(1)); //we dont keep accents
+					nb_open -= (line.length() - line.replace("}}", "").length())/2;
+				}
+			}else{
+				Pattern p = Pattern.compile("<title>(.+?)</title>");
+				Matcher m = p.matcher(line);
+				if(m.find()){
 						String title = m.group(1); //we keep accents
-							if(ht_titles.containsKey(title)){ //if the page is store in ht_titles
-								current_id = ht_titles.get(title);
-								eligible = true;
-							}
+						if(ht_titles.containsKey(title)){ //if the page is store in ht_titles
+							current_nb_titles = 0;
+							L.add(current_indice);
+							current_id = ht_titles.get(title);
+							eligible = true;
 						}
 					}
-					line = br.readLine();
 				}
+				line = br.readLine();
+			}
+			L.add(current_indice);
 		}catch(FileNotFoundException e){
 			System.err.println("Caught FileNotFoundException: " + e.getMessage());
 		} catch(IOException e) {                                                                                                                                                                                                                                                          
@@ -277,11 +321,16 @@ public class Main {
 
 		Hashtable<String,Hashtable<Integer,Double>> dictionnary = createDictionnary(file,ht_titles);
 
-		printDictionnary(dictionnary);
+		// printDictionnary(dictionnary);
+
+		System.out.println(C);
+		System.out.println(L);
+		System.out.println(I);
+
+		// System.out.println(ht_titles.toString());
 
 		// System.out.println(nbPagesThatContains("frwiki-debut.xml",wanted));
 
-		// System.out.println(ht_titles.toString());
 		// System.out.println(ht_titles.size());
 		// System.out.println(dictionnary.size());
 
@@ -297,7 +346,7 @@ public class Main {
 		// if(dictionnary.containsKey("152515873")){
 		// 	System.out.println("152515873");
 		// }
-		
+
 
 
 		// if(ht.get(normalize("Titre one")) != null){
