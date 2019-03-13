@@ -2,15 +2,22 @@ import java.util.*;
 import java.util.regex.*;
 import java.io.*;
 import java.text.Normalizer;
-
+@SuppressWarnings("unchecked")
 
 public class Main {
 
 	public static ArrayList<Double> C; //contenus
 	public static ArrayList<Integer> L; //lignes
 	public static ArrayList<Integer> I; //indices
+	public static Hashtable<Integer,Integer> idRank; //correspondance between the page id and it's id in the rank vector
+	public static Hashtable<String, Integer> ht_titles;
+	public static Hashtable<Integer, String> ht_titles_rev;
+	public static Hashtable<String, Integer[]> dictionnary;
+	public static Double[] rank;
 
-	public static int N = 5; //Number of words in the dictionnary 
+	public static double FreqMin = 0.00001;
+	public static int N = 20000; //Number of words in the dictionnary 
+	public static int Compteur;
 
 
 	public static class Word {
@@ -143,6 +150,8 @@ public class Main {
 	}
 
 	public static Hashtable<String, Integer> createHashtableTitles(String file, String[] wanted){
+		Compteur = 0;
+		int compteur = 0;
 		int current_id_title = 0;
 		Hashtable<String, Integer> ht = new Hashtable<String, Integer>();
 		boolean text = false;
@@ -171,9 +180,13 @@ public class Main {
 									text = false;
 									eligible = true;
 									first = false;
-									if(ht.containsKey(title)){
-										System.out.println("Warning : Titre en double: "+title+" current id: "+
-											current_id_title+" previous id: "+ht.get(title));
+									// if(ht.containsKey(title)){
+									// 	System.out.println("Warning : Titre en double: "+title+" current id: "+
+									// 		current_id_title+" previous id: "+ht.get(title));
+									// }
+									if((compteur++)>100){
+										System.out.println(100*(++Compteur)+"! ");
+										compteur = 0;
 									}
 									ht.put(title,current_id_title);
 									current_id_title++;		
@@ -214,7 +227,7 @@ public class Main {
 		String[] stop_words = {" a "," b "," c "," d "," e "," f "," g "," h "," i "," j "," k "," l ",
 		" m "," n "," o "," p "," q "," r "," s "," t "," u "," v "," w "," x "," y "," z "," ai ",
 		" aie "," aient "," aies "," ait "," alors "," as "," au "," aucun "," aura "," aurai ",
-		" auraient "," aurais "," aurait "," auras "," aurez "," auriez "," aurions "," aurons ",
+		" auraient "," aurais "," aurait "," auras "," aurez "," auriez "," aurions "," aurons "," ainsi ",
 		" auront "," aussi "," autre "," aux "," avaient "," avais "," avait "," avant "," avec ",
 		" avez "," aviez "," avions "," avoir "," avons "," ayant "," ayez "," ayons "," bon "," car ",
 		" ce "," ceci "," cela "," ces "," cet "," cette "," ceux "," chaque "," ci "," comme ",
@@ -270,18 +283,24 @@ public class Main {
 			ArrayList<Integer> liens = new ArrayList<Integer>();
 
 			String line = normalize(br.readLine());
-			boolean eligible = false; //if the page is in ht_titles
-			boolean eligible_text = false; //if we are inside of a text balise
+			//if the page is in ht_titles
+			boolean eligible = false;
+			//if we are inside of a text balise
+			boolean eligible_text = false;
 			String[] words;
-			int current_id = 0; //current page id 
-			int current_indice = 0; //current index in array C
-			int nb_words = 0; //number of words in the current page
-			int nb_open = 0; //number of {{ open and not closed
+			//current page id
+			int current_id = 0; 
+			//current index in array C
+			int current_indice = 0;
+			//number of words in the current page
+			int nb_words = 0;
+			//number of {{ open and not closed
+			int nb_open = 0;
 			int current_nb_titles = 0;
-
-			while(line != null){ //while not end of file
-				if(line.length()>0){
-					if(line.charAt(0) != '|' && !line.contains("[http")){
+			//while not end of file
+			while(line != null){
+				if(line.length()>1){
+					if(line.charAt(0) != '|' && line.charAt(1) != '|' && !line.contains("[http") && !line.contains("Fichier:")){
 						if(line.contains("<title>")){
 							eligible = false;
 						}
@@ -326,16 +345,12 @@ public class Main {
 											title = m2.group(1);
 										}
 										int id_title = idTitle(ht_titles,title);
-										System.out.println("-->"+title+"--+"+id_title+"-"+current_id);
-										if(id_title != -1 && !liens.contains(id_title)){ //title found in the ht_titles for the first time
+										//title found in the ht_titles for the first time
+										if(id_title != -1 && !liens.contains(id_title)){ 
 											liens.add(id_title);
 											I.add(id_title);
 											current_nb_titles++;
-											// System.out.println("!!!!"+title+"!!!"+ht_titles.get(title)+"-"+current_id);
 										}
-										// else{
-										// 	System.out.println("-------"+title+"------");
-										// }
 										line = line.replace(m.group()," ");
 									}
 
@@ -347,12 +362,14 @@ public class Main {
 										if(!w.equals("")){
 											nb_words++;
 
-											if(!dictionnary.containsKey(w)){ //if it's a new word
+											//if it's a new word
+											if(!dictionnary.containsKey(w)){
 												Hashtable<Integer,Double> h = new Hashtable<Integer,Double>();
 												h.put(current_id,1.0);
 												dictionnary.put(w,h);
-											}else{ //if the word already exist in the dictionnary
-												if(dictionnary.get(w).containsKey(current_id)){ //if we've already seen this word in this page
+											}else{
+												//if we've already seen this word in this page
+												if(dictionnary.get(w).containsKey(current_id)){ 
 													dictionnary.get(w).put(current_id,dictionnary.get(w).get(current_id)+1.0);
 												}else{
 													dictionnary.get(w).put(current_id,1.0);
@@ -366,8 +383,10 @@ public class Main {
 							Pattern p = Pattern.compile("<title>(.+?)</title>");
 							Matcher m = p.matcher(line);
 							if(m.find()){
-								String title = m.group(1); //we keep accents
-								if(ht_titles.containsKey(title)){ //if the page is store in ht_titles
+								//we keep accents
+								String title = m.group(1);
+								//if the page is store in ht_titles
+								if(ht_titles.containsKey(title)){
 									liens.clear();
 									current_nb_titles = 0;
 									nb_open = 0;
@@ -389,68 +408,383 @@ public class Main {
 		}
 
 		return selectNBestFreq(dictionnary,ht_nb_words);
-		}
-
-public static Hashtable<String,Hashtable<Integer,Double>> selectNBestFreq(Hashtable<String,Hashtable<Integer,Double>> dictionnary,
-	Hashtable<Integer,Integer> ht_nb_words){
-	Hashtable<String,Hashtable<Integer,Double>> result = new Hashtable<String,Hashtable<Integer,Double>>();
-	ArrayList<Word> words = new ArrayList<Word>();
-	int i = 0;
-
-	for (String word : dictionnary.keySet()) {
-		words.add(i,new Word(word));
-		for(Map.Entry<Integer,Double> e : dictionnary.get(word).entrySet()){
-			words.get(i).addOcc((int)(e.getValue()*ht_nb_words.get(e.getKey())));
-		}
-		i++;
 	}
 
-	Collections.sort(words, new SortByNbOccRev());
+	public static Hashtable<String,Hashtable<Integer,Double>> selectNBestFreq(
+		Hashtable<String,Hashtable<Integer,Double>> dictionnary,
+		Hashtable<Integer,Integer> ht_nb_words){
+		Hashtable<String,Hashtable<Integer,Double>> result = new Hashtable<String,Hashtable<Integer,Double>>();
+		ArrayList<Word> words = new ArrayList<Word>();
+		int i = 0;
 
-	for(int j = 0; j < N; j++){
-		result.put(words.get(j).getText(),dictionnary.get(words.get(j).getText()));
+		for (String word : dictionnary.keySet()) {
+			words.add(i,new Word(word));
+			for(Map.Entry<Integer,Double> e : dictionnary.get(word).entrySet()){
+				words.get(i).addOcc((int)(e.getValue()*ht_nb_words.get(e.getKey())));
+			}
+			i++;
+		}
+
+		Collections.sort(words, new SortByNbOccRev());
+
+		for(int j = 0; j < N; j++){
+			result.put(words.get(j).getText(),dictionnary.get(words.get(j).getText()));
+		}
+
+		return result;
 	}
 
-	return result;
-}
+	public static String titleToURL(String title){
+		title = title.replaceAll(" ","_");
+		title = "https://fr.wikipedia.org/wiki/"+title;
+		return title;
+	}
 
-public static String titleToURL(String title){
-		// title = title.toLowerCase();
-	title = title.replaceAll(" ","_");
-	title = "https://fr.wikipedia.org/wiki/"+title;
-	return title;
-}
+	public static ArrayList<Integer> getRandomList(int k, int n){
+		ArrayList<Integer> list = new ArrayList<Integer>();
+		// int a;
+		// for(int i = 0; i < k; i++){
+		// 	do{
+		// 		a = (int)(Math.random() * (n-1));
+		// 	}while(list.contains(a));
+		// 	list.add(a);
+		// }
 
-public static void main(String[] args) {
+		for(int i = 0; i < n ; i++){
+			list.add(i);
+		}
+
+		return list;
+	}
+
+	public static Double[] rankVector(Double[] prev_rank, boolean first){
+		int n = prev_rank.length;
+		Double rank [] = new Double[n];
+		int max = n-1;
+		// int k = (int)(Math.random() * (n-1-max) + 1); //TODO k=1000
+		int k = n;
+		int id = 0;
+		//Initialisation of the Rank vector
+		for(int p = 0; p < n; p++){
+			rank[p] = 0.0;
+		}
+		//Calcul a new step of Rank vector
+		for(int i = 0; i < L.size()-1; i++){
+			if(first){
+				idRank.put(id,L.get(i));
+				// idRank.put(L.get(i),id);
+				id++;
+			}
+			//if it's not a ligne full of zero
+			if(L.get(i) != L.get(i+1)){
+				for(int j = L.get(i); j < L.get(i+1); j++){
+					rank[I.get(j)] += C.get(j)*prev_rank[i];
+				}
+			}else{
+				ArrayList<Integer> rand = getRandomList(k,n);
+				for(Integer a : rand){
+					rank[a] += prev_rank[i]*1.0/k;
+				}
+			}
+		}
+
+		return rank;
+	}
+
+	public static Double distance(Double[] v, Double[] w){
+		Double sum = 0.0;
+		for(int i = 0; i < v.length; i++){
+			sum += Math.abs(v[i]-w[i]);
+		}
+
+		return sum;
+	}
+
+	//Sort the dictionnary and convert it to a Hashtable<String, Integer[]> sorted
+	public static Hashtable<String, Integer[]> sortDictionnary(Hashtable<String,Hashtable<Integer,Double>> dictionnary, Double[] rank){
+
+		Hashtable<String, Integer[]> dict = new Hashtable<String, Integer[]>();
+
+		for(Map.Entry<String,Hashtable<Integer,Double>> e : dictionnary.entrySet()){
+			// for(Integer i : sortPagesByRank(e.getValue())){
+			// 	System.out.println("sortDict put : "+i);				
+			// }
+			dict.put(e.getKey(),sortPagesByRank(e.getValue()));
+		}
+
+		return dict;
+	}
+
+	public static Integer[] sortPagesByRank(Hashtable<Integer,Double> ht){
+		Integer[] result = new Integer[ht.size()];
+		ArrayList<Map.Entry<Integer, Double>> l = new ArrayList<>(ht.entrySet());
+		Collections.sort(l, new Comparator<Map.Entry<Integer,Double>>(){
+			public int compare(Map.Entry<Integer,Double> o1, Map.Entry<Integer,Double> o2) {
+				return o2.getValue().compareTo(o1.getValue());
+			}});
+
+		for(int i = 0; i < l.size(); i++){
+			if(l.get(i).getValue() < FreqMin){
+				break;
+			}
+			result[i] = l.get(i).getKey();
+		}
+
+		return result;
+	}
+
+	public static ArrayList<Integer> researchSimple(String word, Hashtable<String, Integer[]> dict){
+		ArrayList<Integer> result = new ArrayList<Integer>();
+		// System.out.println("RS dict : "+dict);
+		// System.out.println("RS word : "+word);
+		//Integer[] array = dict.get(word);
+		// if(array == 0){
+		// 	System.out.println("Array Empty");
+		// }else{
+		for (Integer i : dict.get(word)){
+			// System.out.println("RS + "+i);
+			result.add(i);
+		}
+		// }
+		return result;
+	}
+
+	public static ArrayList<Integer> intersection(ArrayList<Integer> list1, ArrayList<Integer> list2){
+		ArrayList<Integer> result = new ArrayList<Integer>();
+		for (Integer t : list1) {
+			if(list2.contains(t)) {
+				result.add(t);
+			}
+		}
+		return result;
+	}
+
+	public static ArrayList<Integer> intersection2(ArrayList<Integer> list, Integer[] tab, Double[] rank){
+
+		// System.out.println(idRank);
+		ArrayList<Integer> result = new ArrayList<Integer>();
+		int i_tab = 0;
+		int i_list = 0;
+		while(i_tab < tab.length && i_list < list.size()){
+			// System.out.println("tab size : "+tab.length+" tab id : "+i_tab+" list size : "+list.size()+" id list : "+i_list);
+			// System.out.println("idRank size : "+idRank.size());
+			System.out.println("Try to get list : "+list.get(i_list)+" tab : "+tab[i_tab]);
+			// System.out.println("inter idRank list "+idRank.get(list.get(i_list))+" idRank tab "+idRank.get(tab[i_tab]));
+			System.out.println("inter list "+rank[idRank.get(list.get(i_list))]+" tab "+rank[idRank.get(tab[i_tab])]);
+			if(list.get(i_list) == tab[i_tab]){
+			// if(rank[idRank.get(list.get(i_list))] == rank[idRank.get(tab[i_tab])]){
+				System.out.println("inter add "+tab[i_tab]);
+				result.add(tab[i_tab]);
+				i_tab ++;
+				i_list++;
+			}else{
+				if(rank[idRank.get(list.get(i_list))] == rank[idRank.get(tab[i_tab])]){
+					System.out.println("inter debut i_list " +i_list+" i_tab "+i_tab);
+					double target = rank[idRank.get(list.get(i_list))];
+					System.out.println("inter equal "+target);
+					ArrayList<Integer> i_l = new ArrayList<Integer>();
+					ArrayList<Integer> i_t = new ArrayList<Integer>();
+					while(rank[idRank.get(list.get(i_list))] == target){
+						i_l.add(i_list);
+						i_list++;
+						if(i_list == list.size()){
+							break;
+						}
+					}
+					while(rank[idRank.get(tab[i_tab])] == target){
+						i_t.add(i_tab);
+						i_tab++;
+						if(i_tab == tab.length){
+							break;
+						}
+					}
+					for (Integer t : i_t) {
+						if(i_l.contains(t)) {
+							System.out.println("inter add "+t);
+							result.add(t);
+						}
+					}
+					System.out.println("inter fin i_list " +i_list+" i_tab "+i_tab);
+				}else if (rank[idRank.get(list.get(i_list))] > rank[idRank.get(tab[i_tab])]){
+					i_list++;
+				}else{ 
+					i_tab++;
+				}
+			}
+		}
+		return result;		
+	}
+
+	public static ArrayList<Integer> researchMultiple(ArrayList<String> words, Hashtable<String, Integer[]> dict, Double[] rank){
+		ArrayList<Integer> result = new ArrayList<Integer>();
+
+		if(words.size() != 0){
+			result = researchSimple(words.get(0),dict);
+			if(words.size() == 1){
+				return result;
+			}
+			for(int i = 1; i < words.size(); i++){
+				if(result.size() != 0){
+					result = intersection(result,researchSimple(words.get(i),dict));
+				}
+			}
+		}
+
+		return result;
+	}
+
+	public static Hashtable<Integer, String> reverseHtTitle(Hashtable<String, Integer> ht_title){
+		Hashtable<Integer, String> result = new Hashtable<Integer, String>();
+		for(Map.Entry<String,Integer> e : ht_title.entrySet()){
+			result.put(e.getValue(),e.getKey());
+		}
+		return result;
+	}
+
+	public static void printURLS(ArrayList<Integer> list, Hashtable<Integer, String> ht_titles){
+		for(Integer i : list){
+			System.out.println(titleToURL(ht_titles.get(i)));
+		}
+	}
+
+	public static void storeDatas(){
+		try {
+
+			FileOutputStream f_ht_title = new FileOutputStream("HtTitle.data");
+			ObjectOutputStream o_ht_title = new ObjectOutputStream(f_ht_title);
+			o_ht_title.writeObject(ht_titles);
+			o_ht_title.close();
+			f_ht_title.close();
+
+			FileOutputStream f_ht_title_rev = new FileOutputStream("HtTitleRev.data");
+			ObjectOutputStream o_ht_title_rev = new ObjectOutputStream(f_ht_title_rev);
+			o_ht_title_rev.writeObject(ht_titles_rev);
+			o_ht_title_rev.close();
+			f_ht_title_rev.close();
+
+			FileOutputStream f_dictionnary = new FileOutputStream("Dictionnary.data");
+			ObjectOutputStream o_dictionnary = new ObjectOutputStream(f_dictionnary);
+			o_dictionnary.writeObject(dictionnary);
+			o_dictionnary.close();
+			f_dictionnary.close();
+
+			FileOutputStream f_idRank = new FileOutputStream("idRank.data");
+			ObjectOutputStream o_idRank = new ObjectOutputStream(f_idRank);
+			o_idRank.writeObject(idRank);
+			o_idRank.close();
+			f_idRank.close();
+
+			FileOutputStream f_rank = new FileOutputStream("Rank.data");
+			ObjectOutputStream o_rank = new ObjectOutputStream(f_rank);
+			o_rank.writeObject(rank);
+			o_rank.close();
+			f_rank.close();
+
+		} catch(FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void readDatas(){
+		try {
+
+			FileInputStream f_rank = new FileInputStream("Rank.data");
+			ObjectInputStream o_rank = new ObjectInputStream(f_rank);
+			rank = (Double[])o_rank.readObject();
+			o_rank.close();
+			f_rank.close();
+
+			FileInputStream f_id_rank = new FileInputStream("idRank.data");
+			ObjectInputStream o_id_rank = new ObjectInputStream(f_id_rank);
+			idRank = (Hashtable<Integer,Integer>)o_id_rank.readObject();
+			o_id_rank.close();
+			f_id_rank.close();
+
+			FileInputStream f_ht_title = new FileInputStream("HtTitle.data");
+			ObjectInputStream o_ht_title = new ObjectInputStream(f_ht_title);
+			ht_titles = (Hashtable<String, Integer>)o_ht_title.readObject();
+			o_ht_title.close();
+			f_ht_title.close();
+
+			FileInputStream f_ht_title_rev = new FileInputStream("HtTitleRev.data");
+			ObjectInputStream o_ht_title_rev = new ObjectInputStream(f_ht_title_rev);
+			ht_titles_rev = (Hashtable<Integer, String>)o_ht_title_rev.readObject();
+			o_ht_title_rev.close();
+			f_ht_title_rev.close();
+
+			FileInputStream f_dictionnary = new FileInputStream("Dictionnary.data");
+			ObjectInputStream o_dictionnary = new ObjectInputStream(f_dictionnary);
+			dictionnary = (Hashtable<String, Integer[]>)o_dictionnary.readObject();
+			o_dictionnary.close();
+			f_dictionnary.close();
+
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		} catch(FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void initDatas(String file, String[] wanted){
+
+		ht_titles = createHashtableTitles(file,wanted);
+		ht_titles_rev = reverseHtTitle(ht_titles);
+		Hashtable<String,Hashtable<Integer,Double>> dict = createDictionnary(file,ht_titles);
+		idRank = new Hashtable<Integer,Integer>();
+
+		int n = ht_titles.size();
+		rank = new Double[n];
+		//Initialisation of the Rank vector
+		for(int k = 0; k < n; k++){
+			rank[k] = 1.0/n;
+		}
+		Double epsilone = 0.001;
+		Double rank2 [] = rankVector(rank,true);
+		int i = 0;
+		while(distance(rank,rank2) >= epsilone){
+			i++;
+			rank = rank2;
+			rank2 = rankVector(rank2,false);
+		}
+		rank = rank2;
+
+		dictionnary = sortDictionnary(dict,rank);
+
+		storeDatas();
+	}
+
+	public static void main(String[] args) {
 
 		// String file = "test.txt";
-		// String file = "short.xml";
-	String file = "frwiki-debut.xml";
-		// String [] wanted = {"etudiant"};
-	String [] wanted = {"mathematiques","informatique","sciences","etudiant"};
-		//System.out.println(nbPagesThatContains("test.txt",wanted));
+		String file = "frwiki-20190120-pages-articles.xml";
+		// String file = "frwiki-debut.xml";
+		String [] wanted = {"mathematiques","informatique","sciences","etudiant"};
 
-	Hashtable<String, Integer> ht_titles = createHashtableTitles(file,wanted);
+		Scanner scan = new Scanner(System.in);
+		String str = "";
+		while(!str.equals("read") && !str.equals("init")){
+			System.out.println("Do you want to initialize datas (init) or read data (read) ?");
+			str = scan.nextLine();
+			if(str.equals("init")){
+				initDatas(file,wanted);
+			}else if(str.equals("read")){
+				readDatas();
+			}else{
+				System.out.println("Wrong answer, usage : init OR read");				
+			}	
+		}
+		// System.out.println("Press enter to start the research");
+		// str = scan.nextLine();
 
-		// System.out.println(idTitle(ht_titles,"Civilization"));
-
-	Hashtable<String,Hashtable<Integer,Double>> dictionnary = createDictionnary(file,ht_titles);
-
-		// printDictionnary(dictionnary);
-	// System.out.println(dictionnary.keySet());
-	System.out.println(ht_titles);
-
-	System.out.println(C);
-	System.out.println(L);
-	System.out.println(I);
-
-		// System.out.println(ht_titles.toString());
-
-	// 	System.out.println(nbPagesThatContains("frwiki-debut.xml",wanted));
-
-	// System.out.println("ht Title size : "+ht_titles.size());
-
-	// System.out.println("num 172 : "+ht_titles.getKey(172));
-		// System.out.println("Dictionnary Size : "+dictionnary.size());
-}
+		// ArrayList<String> words = new ArrayList<String>();
+		// words.add("mathematiques");
+		// words.add("ecole");
+		// words.add("defendre");
+		// ArrayList<Integer> inter = researchMultiple(words, dictionnary, rank);
+		// printURLS(inter,ht_titles_rev);
+	}
 } 
