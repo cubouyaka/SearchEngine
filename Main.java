@@ -15,7 +15,7 @@ public class Main {
 	public static Hashtable<String, Integer[]> dictionnary;
 	public static Double[] rank;
 
-	public static double FreqMin = 0.00001;
+	public static double FreqMin = 0.000001;
 	public static int N = 20000; //Number of words in the dictionnary 
 	public static int Compteur;
 
@@ -149,80 +149,6 @@ public class Main {
 		return nb;
 	}
 
-	public static Hashtable<String, Integer> createHashtableTitles(String file, String[] wanted){
-		Compteur = 0;
-		int compteur = 0;
-		int current_id_title = 0;
-		Hashtable<String, Integer> ht = new Hashtable<String, Integer>();
-		boolean text = false;
-		boolean eligible = false;
-		boolean balise = true;
-		try{
-			InputStream is = new FileInputStream(file);
-			BufferedReader br = new BufferedReader(new InputStreamReader(is));
-			Pattern p = Pattern.compile("<title>(.+?)</title>");
-			String title = null;
-			String line = br.readLine();
-			boolean first = false;
-
-			while(line != null){ //while not end of file
-				if(text){
-					for(String s : line.split(" ")){
-						s = normalize(s);
-						if(s.contains("&lt")){
-							balise = false;
-						}else if(s.contains("&gt")){
-							balise = true;
-						}
-						if(balise){
-							for(String w : wanted){
-								if(s.contains(normalize(w)) && first){
-									text = false;
-									eligible = true;
-									first = false;
-									// if(ht.containsKey(title)){
-									// 	System.out.println("Warning : Titre en double: "+title+" current id: "+
-									// 		current_id_title+" previous id: "+ht.get(title));
-									// }
-									if((compteur++)>100){
-										System.out.println(100*(++Compteur)+"! ");
-										compteur = 0;
-									}
-									ht.put(title,current_id_title);
-									current_id_title++;		
-									break;
-								}
-								if(!first){
-									break;
-								}
-							}
-						}
-					}
-				}else{
-					Matcher m = p.matcher(line);
-
-					if(m.find()){
-						title = m.group(1); //we keep accents
-						first = true;
-					}
-				}				
-				if(line.contains("<text ")){
-					text = true;
-					eligible = false;
-				}else if (line.contains("</text>")){
-					text = false;
-				}
-				line = br.readLine();
-			}
-		}catch(FileNotFoundException e){
-			System.err.println("Caught FileNotFoundException: " + e.getMessage());
-		} catch(IOException e) {                                                                                                                                                                                                                                                          
-			System.err.println("Caught IOException: " + e.getMessage());                                                                                                                                                                                                                    
-		}
-
-		return ht;
-	}
-
 	public static String cleanStopWords(String s){
 		String[] stop_words = {" a "," b "," c "," d "," e "," f "," g "," h "," i "," j "," k "," l ",
 		" m "," n "," o "," p "," q "," r "," s "," t "," u "," v "," w "," x "," y "," z "," ai ",
@@ -269,8 +195,86 @@ public class Main {
 		return ht_titles.get(title);
 	}
 
+	public static Hashtable<String, Integer> createHashtableTitles(String file, String[] wanted){
+
+
+		System.out.println("CREATING HT TITLES");
+		int current_id_title = 0;
+		Hashtable<String, Integer> ht = new Hashtable<String, Integer>();
+		boolean text = false;
+		boolean eligible = false;
+		boolean balise = true;
+		Compteur = 0;
+		int compteur = 0;
+		try{
+			InputStream is = new FileInputStream(file);
+			BufferedReader br = new BufferedReader(new InputStreamReader(is));
+			Pattern p = Pattern.compile("<title>(.+?)</title>");
+			String title = null;
+			String line = br.readLine();
+			boolean first = false;
+
+		while(line != null){ //while not end of file
+			if(text){
+				for(String s : line.split(" ")){
+					s = normalize(s);
+					if(s.contains("&lt")){
+						balise = false;
+					}else if(s.contains("&gt")){
+						balise = true;
+					}
+					if(balise){
+						for(String w : wanted){
+							if(s.contains(normalize(w)) && first){
+								text = false;
+								eligible = true;
+								first = false;
+
+								if((compteur++)>100){
+									System.out.println(100*(++Compteur)+"! ");
+									compteur = 0;
+								}
+								ht.put(title,current_id_title);
+								current_id_title++;		
+								break;
+							}
+							if(!first){
+								break;
+							}
+						}
+					}
+				}
+			}else{
+				Matcher m = p.matcher(line);
+
+				if(m.find()){
+						title = m.group(1); //we keep accents
+						first = true;
+					}
+				}				
+				if(line.contains("<text ")){
+					text = true;
+					eligible = false;
+				}else if (line.contains("</text>")){
+					text = false;
+				}
+				line = br.readLine();
+			}
+		}catch(FileNotFoundException e){
+			System.err.println("Caught FileNotFoundException: " + e.getMessage());
+		} catch(IOException e) {                                                                                                                                                                                                                                                          
+			System.err.println("Caught IOException: " + e.getMessage());                                                                                                                                                                                                                    
+		}
+
+		System.out.println("HT TITLES CREATED");
+
+		return ht;
+	}
+
 	public static Hashtable<String,Hashtable<Integer,Double>> createDictionnary(String file, Hashtable<String, Integer> ht_titles){
-		Hashtable<String,Hashtable<Integer,Double>> dictionnary = new Hashtable<String,Hashtable<Integer,Double>>();
+		
+		System.out.println("CREATING DICTIONNARY");
+		Hashtable<String,Hashtable<Integer,Double>> dict = new Hashtable<String,Hashtable<Integer,Double>>();
 		Hashtable<Integer,Integer> ht_nb_words = new Hashtable<Integer,Integer>();
 		try{
 			InputStream is = new FileInputStream(file);
@@ -311,7 +315,7 @@ public class Main {
 							}
 
 							if(line.contains("</text>")){
-								for (Map.Entry<String,Hashtable<Integer,Double>> entry : dictionnary.entrySet()) {
+								for (Map.Entry<String,Hashtable<Integer,Double>> entry : dict.entrySet()) {
 									for(Map.Entry<Integer,Double> e : entry.getValue().entrySet()){
 										if(e.getKey() == current_id){
 											e.setValue(e.getValue()/nb_words);
@@ -363,16 +367,16 @@ public class Main {
 											nb_words++;
 
 											//if it's a new word
-											if(!dictionnary.containsKey(w)){
+											if(!dict.containsKey(w)){
 												Hashtable<Integer,Double> h = new Hashtable<Integer,Double>();
 												h.put(current_id,1.0);
-												dictionnary.put(w,h);
+												dict.put(w,h);
 											}else{
 												//if we've already seen this word in this page
-												if(dictionnary.get(w).containsKey(current_id)){ 
-													dictionnary.get(w).put(current_id,dictionnary.get(w).get(current_id)+1.0);
+												if(dict.get(w).containsKey(current_id)){ 
+													dict.get(w).put(current_id,dict.get(w).get(current_id)+1.0);
 												}else{
-													dictionnary.get(w).put(current_id,1.0);
+													dict.get(w).put(current_id,1.0);
 												}
 											}
 										}
@@ -407,29 +411,39 @@ public class Main {
 			System.err.println("Caught IOException: " + e.getMessage());
 		}
 
-		return selectNBestFreq(dictionnary,ht_nb_words);
+		System.out.println("DICTIONNARY CREATED");	
+		storePartialDictionnary(dict);
+
+		return selectNBestFreq(dict,ht_nb_words);
 	}
 
 	public static Hashtable<String,Hashtable<Integer,Double>> selectNBestFreq(
-		Hashtable<String,Hashtable<Integer,Double>> dictionnary,
+		Hashtable<String,Hashtable<Integer,Double>> dict,
 		Hashtable<Integer,Integer> ht_nb_words){
 		Hashtable<String,Hashtable<Integer,Double>> result = new Hashtable<String,Hashtable<Integer,Double>>();
 		ArrayList<Word> words = new ArrayList<Word>();
 		int i = 0;
 
-		for (String word : dictionnary.keySet()) {
+		for (String word : dict.keySet()) {
 			words.add(i,new Word(word));
-			for(Map.Entry<Integer,Double> e : dictionnary.get(word).entrySet()){
+			for(Map.Entry<Integer,Double> e : dict.get(word).entrySet()){
 				words.get(i).addOcc((int)(e.getValue()*ht_nb_words.get(e.getKey())));
 			}
 			i++;
 		}
 
 		Collections.sort(words, new SortByNbOccRev());
-
-		for(int j = 0; j < N; j++){
-			result.put(words.get(j).getText(),dictionnary.get(words.get(j).getText()));
+		System.out.println("word size "+words.size());
+		if(words.size() < N){
+			for(int j = 0; j < words.size(); j++){
+				result.put(words.get(j).getText(),dict.get(words.get(j).getText()));
+			}
+		}else{
+			for(int j = 0; j < N; j++){
+				result.put(words.get(j).getText(),dict.get(words.get(j).getText()));
+			}
 		}
+
 
 		return result;
 	}
@@ -442,13 +456,6 @@ public class Main {
 
 	public static ArrayList<Integer> getRandomList(int k, int n){
 		ArrayList<Integer> list = new ArrayList<Integer>();
-		// int a;
-		// for(int i = 0; i < k; i++){
-		// 	do{
-		// 		a = (int)(Math.random() * (n-1));
-		// 	}while(list.contains(a));
-		// 	list.add(a);
-		// }
 
 		for(int i = 0; i < n ; i++){
 			list.add(i);
@@ -458,11 +465,11 @@ public class Main {
 	}
 
 	public static Double[] rankVector(Double[] prev_rank, boolean first){
+		// System.out.println("STARTING RANK CALCUL ! ");
 		int n = prev_rank.length;
 		Double rank [] = new Double[n];
 		int max = n-1;
-		// int k = (int)(Math.random() * (n-1-max) + 1); //TODO k=1000
-		int k = n;
+		int k = 1000;
 		int id = 0;
 		//Initialisation of the Rank vector
 		for(int p = 0; p < n; p++){
@@ -472,7 +479,6 @@ public class Main {
 		for(int i = 0; i < L.size()-1; i++){
 			if(first){
 				idRank.put(id,L.get(i));
-				// idRank.put(L.get(i),id);
 				id++;
 			}
 			//if it's not a ligne full of zero
@@ -487,6 +493,8 @@ public class Main {
 				}
 			}
 		}
+
+		// System.out.println("RANK CALCULED ! ");
 
 		return rank;
 	}
@@ -506,9 +514,6 @@ public class Main {
 		Hashtable<String, Integer[]> dict = new Hashtable<String, Integer[]>();
 
 		for(Map.Entry<String,Hashtable<Integer,Double>> e : dictionnary.entrySet()){
-			// for(Integer i : sortPagesByRank(e.getValue())){
-			// 	System.out.println("sortDict put : "+i);				
-			// }
 			dict.put(e.getKey(),sortPagesByRank(e.getValue()));
 		}
 
@@ -535,17 +540,11 @@ public class Main {
 
 	public static ArrayList<Integer> researchSimple(String word, Hashtable<String, Integer[]> dict){
 		ArrayList<Integer> result = new ArrayList<Integer>();
-		// System.out.println("RS dict : "+dict);
-		// System.out.println("RS word : "+word);
-		//Integer[] array = dict.get(word);
-		// if(array == 0){
-		// 	System.out.println("Array Empty");
-		// }else{
-		for (Integer i : dict.get(word)){
-			// System.out.println("RS + "+i);
-			result.add(i);
+		if(dict.containsKey(word)){
+			for (Integer i : dict.get(word)){
+				result.add(i);
+			}
 		}
-		// }
 		return result;
 	}
 
@@ -561,18 +560,13 @@ public class Main {
 
 	public static ArrayList<Integer> intersection2(ArrayList<Integer> list, Integer[] tab, Double[] rank){
 
-		// System.out.println(idRank);
 		ArrayList<Integer> result = new ArrayList<Integer>();
 		int i_tab = 0;
 		int i_list = 0;
 		while(i_tab < tab.length && i_list < list.size()){
-			// System.out.println("tab size : "+tab.length+" tab id : "+i_tab+" list size : "+list.size()+" id list : "+i_list);
-			// System.out.println("idRank size : "+idRank.size());
 			System.out.println("Try to get list : "+list.get(i_list)+" tab : "+tab[i_tab]);
-			// System.out.println("inter idRank list "+idRank.get(list.get(i_list))+" idRank tab "+idRank.get(tab[i_tab]));
 			System.out.println("inter list "+rank[idRank.get(list.get(i_list))]+" tab "+rank[idRank.get(tab[i_tab])]);
 			if(list.get(i_list) == tab[i_tab]){
-			// if(rank[idRank.get(list.get(i_list))] == rank[idRank.get(tab[i_tab])]){
 				System.out.println("inter add "+tab[i_tab]);
 				result.add(tab[i_tab]);
 				i_tab ++;
@@ -626,6 +620,8 @@ public class Main {
 			for(int i = 1; i < words.size(); i++){
 				if(result.size() != 0){
 					result = intersection(result,researchSimple(words.get(i),dict));
+				}else{
+					System.out.println("The word \""+words.get(i-1)+"\" doesn't exists in the dictionnary");
 				}
 			}
 		}
@@ -642,8 +638,41 @@ public class Main {
 	}
 
 	public static void printURLS(ArrayList<Integer> list, Hashtable<Integer, String> ht_titles){
+		if(list.size() == 0){
+			System.out.println("No result found");
+			return;
+		}
 		for(Integer i : list){
 			System.out.println(titleToURL(ht_titles.get(i)));
+		}
+	}
+
+	public static void storeHtTitle(){
+		try {
+			FileOutputStream f_ht_title = new FileOutputStream("HtTitle.data");
+			ObjectOutputStream o_ht_title = new ObjectOutputStream(f_ht_title);
+			o_ht_title.writeObject(ht_titles);
+			o_ht_title.close();
+			f_ht_title.close();
+		} catch(FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void storePartialDictionnary(Hashtable<String,Hashtable<Integer,Double>> dict){
+		try {
+			FileOutputStream f_p_dict = new FileOutputStream("PartialDictionnary.data");
+			ObjectOutputStream o_p_dict = new ObjectOutputStream(f_p_dict);
+			o_p_dict.writeObject(dict);
+			o_p_dict.close();
+			f_p_dict.close();
+			System.out.println("PARTIAL DICTIONNARY STORED");
+		} catch(FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -685,6 +714,40 @@ public class Main {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	public static void readHtTitle(){
+		try{
+			FileInputStream f_ht_title = new FileInputStream("HtTitle.data");
+			ObjectInputStream o_ht_title = new ObjectInputStream(f_ht_title);
+			ht_titles = (Hashtable<String, Integer>)o_ht_title.readObject();
+			o_ht_title.close();
+			f_ht_title.close();
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		} catch(FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static Hashtable<String,Hashtable<Integer,Double>> readPartialDictionnary(){
+		Hashtable<String,Hashtable<Integer,Double>> dict = new Hashtable<String,Hashtable<Integer,Double>>();
+		try{
+			FileInputStream f_p_dict = new FileInputStream("PartialDictionnary.data");
+			ObjectInputStream o_p_dict = new ObjectInputStream(f_p_dict);
+			dict = (Hashtable<String,Hashtable<Integer,Double>>)o_p_dict.readObject();
+			o_p_dict.close();
+			f_p_dict.close();
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		} catch(FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return dict;
 	}
 
 	public static void readDatas(){
@@ -729,11 +792,22 @@ public class Main {
 		}
 	}
 
-	public static void initDatas(String file, String[] wanted){
+	public static void initDatas(String file, String[] wanted, boolean init_ht_title, boolean init_part_dict){
 
-		ht_titles = createHashtableTitles(file,wanted);
+		if(init_ht_title){
+			ht_titles = createHashtableTitles(file,wanted);
+			storeHtTitle();
+			System.out.println("HT TITLES STORED");
+		}else{
+			readHtTitle();
+		}
 		ht_titles_rev = reverseHtTitle(ht_titles);
-		Hashtable<String,Hashtable<Integer,Double>> dict = createDictionnary(file,ht_titles);
+		Hashtable<String,Hashtable<Integer,Double>> dict;
+		if(init_part_dict){
+			dict = createDictionnary(file,ht_titles);			
+		}else{
+			dict = readPartialDictionnary();
+		}
 		idRank = new Hashtable<Integer,Integer>();
 
 		int n = ht_titles.size();
@@ -760,8 +834,10 @@ public class Main {
 	public static void main(String[] args) {
 
 		// String file = "test.txt";
-		String file = "frwiki-20190120-pages-articles.xml";
-		// String file = "frwiki-debut.xml";
+		// String file = "frwiki-20190120-pages-articles.xml";
+		String file = "frwiki-debut.xml";
+		// String file = "frwiki-18000000ll.xml";
+
 		String [] wanted = {"mathematiques","informatique","sciences","etudiant"};
 
 		Scanner scan = new Scanner(System.in);
@@ -770,21 +846,29 @@ public class Main {
 			System.out.println("Do you want to initialize datas (init) or read data (read) ?");
 			str = scan.nextLine();
 			if(str.equals("init")){
-				initDatas(file,wanted);
+				initDatas(file,wanted,true,true);
 			}else if(str.equals("read")){
 				readDatas();
 			}else{
 				System.out.println("Wrong answer, usage : init OR read");				
 			}	
 		}
-		// System.out.println("Press enter to start the research");
-		// str = scan.nextLine();
-
-		// ArrayList<String> words = new ArrayList<String>();
-		// words.add("mathematiques");
-		// words.add("ecole");
-		// words.add("defendre");
-		// ArrayList<Integer> inter = researchMultiple(words, dictionnary, rank);
-		// printURLS(inter,ht_titles_rev);
+		ArrayList<String> words = new ArrayList<String>();
+		while(true){
+			System.out.println("Enter your research : ");
+			str = cleanStopWords(normalize(scan.nextLine()));
+			for(String w : str.split(" ")){
+				words.add(w);
+			}
+			long time = System.currentTimeMillis();
+			ArrayList<Integer> inter = researchMultiple(words, dictionnary, rank);
+			time = System.currentTimeMillis() - time;
+			System.out.print("There is "+inter.size()+" results for \""+str+"\"");
+			System.out.println(" -> Search time : "+ time +" millisecond");
+			System.out.println(" ");
+			printURLS(inter,ht_titles_rev);
+			System.out.println("---------------------");
+			words.clear();
+		}
 	}
 } 
