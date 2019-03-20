@@ -17,6 +17,7 @@ public class Main {
 
 	public static double FreqMin = 0.000001;
 	public static int N = 20000; //Number of words in the dictionnary 
+	public static int NbDisplay = 10; //Number of results display at once
 	public static int Compteur;
 
 
@@ -413,6 +414,7 @@ public class Main {
 
 		System.out.println("DICTIONNARY CREATED");	
 		storePartialDictionnary(dict);
+		storeCLI();
 
 		return selectNBestFreq(dict,ht_nb_words);
 	}
@@ -433,7 +435,6 @@ public class Main {
 		}
 
 		Collections.sort(words, new SortByNbOccRev());
-		System.out.println("word size "+words.size());
 		if(words.size() < N){
 			for(int j = 0; j < words.size(); j++){
 				result.put(words.get(j).getText(),dict.get(words.get(j).getText()));
@@ -564,18 +565,13 @@ public class Main {
 		int i_tab = 0;
 		int i_list = 0;
 		while(i_tab < tab.length && i_list < list.size()){
-			System.out.println("Try to get list : "+list.get(i_list)+" tab : "+tab[i_tab]);
-			System.out.println("inter list "+rank[idRank.get(list.get(i_list))]+" tab "+rank[idRank.get(tab[i_tab])]);
 			if(list.get(i_list) == tab[i_tab]){
-				System.out.println("inter add "+tab[i_tab]);
 				result.add(tab[i_tab]);
 				i_tab ++;
 				i_list++;
 			}else{
 				if(rank[idRank.get(list.get(i_list))] == rank[idRank.get(tab[i_tab])]){
-					System.out.println("inter debut i_list " +i_list+" i_tab "+i_tab);
 					double target = rank[idRank.get(list.get(i_list))];
-					System.out.println("inter equal "+target);
 					ArrayList<Integer> i_l = new ArrayList<Integer>();
 					ArrayList<Integer> i_t = new ArrayList<Integer>();
 					while(rank[idRank.get(list.get(i_list))] == target){
@@ -594,11 +590,9 @@ public class Main {
 					}
 					for (Integer t : i_t) {
 						if(i_l.contains(t)) {
-							System.out.println("inter add "+t);
 							result.add(t);
 						}
 					}
-					System.out.println("inter fin i_list " +i_list+" i_tab "+i_tab);
 				}else if (rank[idRank.get(list.get(i_list))] > rank[idRank.get(tab[i_tab])]){
 					i_list++;
 				}else{ 
@@ -626,6 +620,15 @@ public class Main {
 			}
 		}
 
+		for(Integer i : result){
+			for(String w : words){
+				if(normalize(cleanStopWords(titleToURL(ht_titles_rev.get(i)))).contains(normalize(cleanStopWords(w)))){
+					result.remove(i);
+					result.add(0,i);
+				}				
+			}
+		}
+
 		return result;
 	}
 
@@ -642,8 +645,34 @@ public class Main {
 			System.out.println("No result found");
 			return;
 		}
-		for(Integer i : list){
-			System.out.println(titleToURL(ht_titles.get(i)));
+		int i = 0;
+		int k = 0;
+		boolean all_displayed = false;
+		Scanner scan = new Scanner(System.in);
+		String str = "";
+
+		while(list.size() >= NbDisplay*i){
+			k = NbDisplay*(i+1);
+			if(list.size() < k){
+				k = list.size();
+				all_displayed = true;
+			}
+			for(int j = i*NbDisplay; j < k; j++){
+				System.out.println(titleToURL(ht_titles.get(list.get(j))));					
+			}
+			if(!all_displayed){
+				System.out.println("\n"+k+" results displayed already -"+
+					" Press enter to continue dispaying result, or stop to stop");
+				str = scan.nextLine();
+				while(!str.equals("") && !str.equals("stop")){
+					System.out.println("Please press enter to continue displaying result, or stop to stop");
+					str = scan.nextLine();
+				}
+				if(str.equals("stop")){
+					return;
+				}
+			}
+			i++;
 		}
 	}
 
@@ -654,6 +683,34 @@ public class Main {
 			o_ht_title.writeObject(ht_titles);
 			o_ht_title.close();
 			f_ht_title.close();
+		} catch(FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void storeCLI(){
+		try {
+			FileOutputStream f_c = new FileOutputStream("C.data");
+			ObjectOutputStream o_c = new ObjectOutputStream(f_c);
+			o_c.writeObject(C);
+			o_c.close();
+			f_c.close();
+
+			FileOutputStream f_l = new FileOutputStream("L.data");
+			ObjectOutputStream o_l = new ObjectOutputStream(f_l);
+			o_l.writeObject(L);
+			o_l.close();
+			f_l.close();
+
+			FileOutputStream f_i = new FileOutputStream("I.data");
+			ObjectOutputStream o_i = new ObjectOutputStream(f_i);
+			o_i.writeObject(I);
+			o_i.close();
+			f_i.close();
+
+			System.out.println("CLI STORED");
 		} catch(FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -723,6 +780,36 @@ public class Main {
 			ht_titles = (Hashtable<String, Integer>)o_ht_title.readObject();
 			o_ht_title.close();
 			f_ht_title.close();
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		} catch(FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void readCLI(){
+		try{
+			FileInputStream f_c = new FileInputStream("C.data");
+			ObjectInputStream o_c = new ObjectInputStream(f_c);
+			C = (ArrayList<Double>)o_c.readObject();
+			o_c.close();
+			f_c.close();
+
+			FileInputStream f_l = new FileInputStream("L.data");
+			ObjectInputStream o_l = new ObjectInputStream(f_l);
+			L = (ArrayList<Integer>)o_l.readObject();
+			o_l.close();
+			f_l.close();
+
+			FileInputStream f_i = new FileInputStream("I.data");
+			ObjectInputStream o_i = new ObjectInputStream(f_i);
+			I = (ArrayList<Integer>)o_i.readObject();
+			o_i.close();
+			f_i.close();
+
+			System.out.println("CLI read");
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
 		} catch(FileNotFoundException e) {
@@ -806,6 +893,7 @@ public class Main {
 		if(init_part_dict){
 			dict = createDictionnary(file,ht_titles);			
 		}else{
+			readCLI();
 			dict = readPartialDictionnary();
 		}
 		idRank = new Hashtable<Integer,Integer>();
@@ -824,6 +912,7 @@ public class Main {
 			rank = rank2;
 			rank2 = rankVector(rank2,false);
 		}
+		System.out.println("NB iterations rank : "+i);
 		rank = rank2;
 
 		dictionnary = sortDictionnary(dict,rank);
@@ -856,9 +945,11 @@ public class Main {
 		ArrayList<String> words = new ArrayList<String>();
 		while(true){
 			System.out.println("Enter your research : ");
-			str = cleanStopWords(normalize(scan.nextLine()));
+			str = cleanStopWords(" "+normalize(scan.nextLine()));
 			for(String w : str.split(" ")){
-				words.add(w);
+				if(!w.equals("")){
+					words.add(w);
+				}
 			}
 			long time = System.currentTimeMillis();
 			ArrayList<Integer> inter = researchMultiple(words, dictionnary, rank);
