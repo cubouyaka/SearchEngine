@@ -619,14 +619,18 @@ public class Main {
 				}
 			}
 		}
-
+		ArrayList<Integer> toRemove = new ArrayList<Integer>();
 		for(Integer i : result){
 			for(String w : words){
 				if(normalize(cleanStopWords(titleToURL(ht_titles_rev.get(i)))).contains(normalize(cleanStopWords(w)))){
-					result.remove(i);
-					result.add(0,i);
-				}				
+					toRemove.add(i);
+				}
 			}
+		}
+
+		for(Integer j : toRemove){
+			result.remove(Integer.valueOf(j));
+			result.add(0,j);
 		}
 
 		return result;
@@ -653,7 +657,7 @@ public class Main {
 
 		while(list.size() >= NbDisplay*i){
 			k = NbDisplay*(i+1);
-			if(list.size() < k){
+			if(list.size() <= k){
 				k = list.size();
 				all_displayed = true;
 			}
@@ -661,11 +665,11 @@ public class Main {
 				System.out.println(titleToURL(ht_titles.get(list.get(j))));					
 			}
 			if(!all_displayed){
-				System.out.println("\n"+k+" results displayed already -"+
-					" Press enter to continue dispaying result, or stop to stop");
+				System.out.println("\n"+k+" results displayed already (over "+list.size()+
+					") - Press enter to continue dispaying result, or \"stop\" to stop:");
 				str = scan.nextLine();
 				while(!str.equals("") && !str.equals("stop")){
-					System.out.println("Please press enter to continue displaying result, or stop to stop");
+					System.out.println("Please press enter to continue displaying result, or \"stop\" to stop");
 					str = scan.nextLine();
 				}
 				if(str.equals("stop")){
@@ -924,8 +928,8 @@ public class Main {
 
 		// String file = "test.txt";
 		// String file = "frwiki-20190120-pages-articles.xml";
-		String file = "frwiki-debut.xml";
-		// String file = "frwiki-18000000ll.xml";
+		// String file = "frwiki-debut.xml";
+		String file = "frwiki-5000000l.xml";
 
 		String [] wanted = {"mathematiques","informatique","sciences","etudiant"};
 
@@ -936,6 +940,7 @@ public class Main {
 			str = scan.nextLine();
 			if(str.equals("init")){
 				initDatas(file,wanted,true,true);
+				//initDatas(file,wanted,false,false); //if you already have HtTitle.data and PartialDictionnary.data
 			}else if(str.equals("read")){
 				readDatas();
 			}else{
@@ -946,6 +951,9 @@ public class Main {
 		while(true){
 			System.out.println("Enter your research : ");
 			str = cleanStopWords(" "+normalize(scan.nextLine()));
+			if(str.equals(" ")){ //to quit the programm
+				return;
+			}
 			for(String w : str.split(" ")){
 				if(!w.equals("")){
 					words.add(w);
